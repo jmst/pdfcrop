@@ -1,11 +1,14 @@
 import sys
 from ctypes import windll
 
-from tkinter import (Tk, StringVar,
-                     Menu, Canvas, PhotoImage, Frame, Button,
+from tkinter import (Tk, StringVar, DoubleVar,
+                     Menu, Canvas, PhotoImage, Frame,
                      NORMAL, DISABLED, TRUE, FALSE)
 from tkinter import filedialog as fd
 from tkinter import ttk
+from tkinter.ttk import Button
+# existing ttk.Widgets will still work as named ttk., so replace them
+# existing tk.Frame options fail # from tkinter.ttk import Frame
 from math import sqrt, ceil
 # from PIL import Image
 from formula import a_sizer
@@ -53,17 +56,6 @@ class TkGui:
         ui_frame.rowconfigure(0, weight=1)
         ui_frame.rowconfigure(1, weight=1)
 
-        input_frame=ttk.Frame(ui_frame, width=30, height=10)
-        x0 = StringVar(root, '0')
-        x0_entry=ttk.Entry(input_frame, textvariable=x0)
-        x0_entry.grid(row=0)
-        x1 = StringVar(root, '1')
-        x1_entry=ttk.Entry(input_frame, textvariable=x1)
-        x1_entry.grid(row=1)
-        minimap=ttk.Frame(ui_frame, style="debug-fg.TFrame")
-        input_frame.grid(column=0, row=0)
-        minimap.grid(column=0, row=1, sticky=full)
-
         ## east im_frame
         #       image canvas + mouse interactive guidelines
         
@@ -83,7 +75,7 @@ class TkGui:
         im_scrollv=ttk.Scrollbar(im_frame_container, orient='vertical')
         im_frame_scrollbut=Frame(im_frame_container, bd=1, bg=debugc)
         im_frame_scrollbut.grid_propagate(False)
-        im_scrollbut=ttk.Button(im_frame_scrollbut)#, style='debug-bg.TFrame') # change style dims
+        im_scrollbut=Button(im_frame_scrollbut)#, style='debug-bg.TFrame') # change style dims
         ## grid
         # grid indexes 'reset' in container
         im_frame_container.grid(column=1, row=1, sticky='n')
@@ -157,65 +149,131 @@ class TkGui:
 
         # float(self.canvas['height'])+debug_lt*4))
 
-        h1 = self.canvas.create_line(0, y0, xe, y0)
-        h2 = self.canvas.create_line(0, y1, xe, y1)
-        v1 = self.canvas.create_line(x0, 0, x0, ye)
-        v2 = self.canvas.create_line(x1, 0, x1, ye)
-        line_set = [h1, v2, h2, v1] # NESW order matters for move_line
-        line_set_length = len(line_set)
-        for line in line_set:
-            self.canvas.itemconfigure(line, width=debug_lt, fill='red')
+        # NSEW unsorted list() order matters for move_line
+        self.line_matrix = {'h1': [0, y0, xe, y0],
+                            'h2': [0, y1, xe, y1],
+                            'v1': [x0, 0, x0, ye],
+                            'v2': [x1, 0, x1, ye]}
 
-        # to check if closest to og pos ie. canvas edge
+        # self.line_xy = {}
+        # for line in list(self.line_matrix):
+        #     self.line_xy[line] = self.line_matrix[line][:2]
+        
+        def make_line_set(**kwargs):
+            set = {}
+            for line in list(self.line_matrix):
+                ln = self.canvas.create_line(self.line_matrix[line], **kwargs)
+                set[line] = {'canv': ln}
+            return set
+
+        # _init to check if closest to og pos ie. canvas edge
         # TODO make this optional; og pos != canvas edge circumstance?
-        line_set_init = []
-        for line in line_set:
-            line_set_init.append(self.canvas.create_line(
-                self.canvas.coords(line), state='hidden'))
+        # could show in debug mode # line_set_init = make_line_set(state='hidden')
+        self.line_set = make_line_set(width=debug_lt, fill='red')
+        
+        line_set_length = len(self.line_set)
 
         # global/instance so reusable for <B1-Motion> callback
-        self.line_index = 0
+        self.line_index = ''
 
         def get_line(event):
-            diffs = []
-            for line in line_set + line_set_init:
-                cd = self.canvas.coords(line)
-                x = abs(event.x - cd[0])
-                y = abs(event.y - cd[1])
-                diff = min(x, y)
-                diffs.append(diff)
-            self.line_index = diffs.index(min(diffs))
+            diffs = {}
+
+            # this method only checks the necessary xy, test perfance diff?
+            for line in ['h1', 'h2']:
+                liney = abs(event.y - self.canvas.coords(self.line_set[line]['canv'])[1])
+                inity = abs(event.y - self.line_matrix[line][1])
+                diff = min(liney, inity)
+                diffs[line] = diff
+            for line in ['v1', 'v2']:
+                linex = abs(event.x - self.canvas.coords(self.line_set[line]['canv'])[0])
+                initx = abs(event.x - self.line_matrix[line][0])
+                diff = min(linex, initx)
+                diffs[line] = diff
+            print("hello", diffs)
+                
+            # for line in self.line_set:
+            #     x = abs(event.x - self.canvas.coords(self.line_set[line]['canv'])[0])
+            #     y = abs(event.y - self.canvas.coords(self.line_set[line]['canv'])[1])
+            #     diff = min(x, y)
+            #     diffs[line] = diff
+            # for line in list(self.line_matrix):
+            #     x = abs(event.x - self.line_matrix[line][0])
+            #     y = abs(event.y - self.line_matrix[line][1])
+            #     diff = min(x, y)
+            #     diffs[line] = diff
+                
+            self.line_index = min(diffs, key=diffs.get) # TODO type hint error
             
-            if self.line_index >= line_set_length: # >= as 0-indexed
-                self.line_index -= line_set_length
+            # if self.line_index >= line_set_length: # >= as 0-indexed
+            #     self.line_index -= line_set_length
             move_line(event)
 
         self.min_gap = 10
         
         def move_line(event):
-            li = self.line_index
-            line = line_set[li]
+            ln = self.line_index
+            line = self.line_set[ln]['canv']
             c = self.canvas.coords(line)
-            ci = self.canvas.coords(line_set_init[li])
-            orient = li % 2 == 0
+            # ci = self.canvas.coords(line_set_init[ln])
+            # orient = ln % 2 == 0
             # if orient and event.y >= ci[1]:
             #     self.canvas.coords(line, c[0], event.y, c[2], event.y)
             # elif not orient and event.x >= ci[0]:
             #     self.canvas.coords(line, event.x, c[1], event.x, c[3])
-            print(event.y, self.canvas.coords(line_set[2]))
-            match self.line_index:
-                case 0 if (event.y >= ci[1] and
-                           event.y < self.canvas.coords(line_set[2])[1] - self.min_gap):
+            # print(event.x, self.canvas.coords(line_set[3])[0])
+
+            # print(event.y, self.canvas.coords(self.line_set[ln]['canv']))
+
+            match ln:
+                case 'h1' if (event.y >= self.line_matrix[ln][1] and
+                              event.y < self.canvas.coords(self.line_set['h2']['canv'])[1]
+                              - self.min_gap):
                     self.canvas.coords(line, c[0], event.y, c[2], event.y)
-                case 1 if (event.x <= ci[0] and
-                           event.x > self.canvas.coords(line_set[3])[0] + self.min_gap):
-                    self.canvas.coords(line, event.x, c[1], event.x, c[3])
-                case 2 if (event.y <= ci[1] and
-                           event.y > self.canvas.coords(line_set[0])[1] + self.min_gap):
+                case 'h2' if (event.y <= self.line_matrix[ln][1] and
+                              event.y > self.canvas.coords(self.line_set['h1']['canv'])[1]
+                              + self.min_gap):
                     self.canvas.coords(line, c[0], event.y, c[2], event.y)
-                case 3 if (event.x >= ci[0] and
-                           event.x < self.canvas.coords(line_set[1])[0] - self.min_gap):
+                case 'v1' if (event.x >= self.line_matrix[ln][0] and
+                              event.x < self.canvas.coords(self.line_set['v2']['canv'])[0]
+                              - self.min_gap):
                     self.canvas.coords(line, event.x, c[1], event.x, c[3])
+                case 'v2' if (event.x <= self.line_matrix[ln][0] and
+                              event.x > self.canvas.coords(self.line_set['v1']['canv'])[0]
+                              + self.min_gap):
+                    self.canvas.coords(line, event.x, c[1], event.x, c[3])
+
+        input_frame=ttk.Frame(ui_frame, width=30, height=10)
+        print(self.line_set)
+
+        for line in list(self.line_set):
+            self.line_set[line]['txtvar'] = DoubleVar(root)
+
+        print(self.line_set)
+        def hvset(line):
+            match line: # 0=x0, 1=y0
+                case 'h1' | 'h2':
+                    xy = 1
+                case 'v1' |'v2':
+                    xy = 0
+                case _:
+                    raise Exception("Line not in line_set")                
+            self.line_set[line]['txtvar'].set(
+                self.canvas.coords(self.line_set[line]['canv'])[xy])
+
+        for line in list(self.line_set):
+            hvset(line)
+            
+        h1x_entry=ttk.Spinbox(input_frame, from_=0, to=100, increment=1,
+                             textvariable=self.line_set['h1']['txtvar'])
+                             # command=lambda x='h1': move_line(x))
+        h1x_entry.grid(row=0)
+        x1 = StringVar(root, '0')
+        x1_entry=ttk.Spinbox(input_frame, textvariable=x1)
+        x1_entry.grid(row=1)
+        minimap=ttk.Frame(ui_frame, style="debug-fg.TFrame")
+        input_frame.grid(column=0, row=0)
+        minimap.grid(column=0, row=1, sticky=full)
 
         # menu
         root.option_add('*tearOff', False)
