@@ -1,7 +1,7 @@
 import sys
 from ctypes import windll
 
-from tkinter import (Tk, StringVar, DoubleVar,
+from tkinter import (Tk, StringVar, DoubleVar, Event,
                      Menu, Canvas, PhotoImage, Frame,
                      NORMAL, DISABLED, TRUE, FALSE)
 from tkinter import filedialog as fd
@@ -174,7 +174,7 @@ class TkGui:
         line_set_length = len(self.line_set)
 
         # global/instance so reusable for <B1-Motion> callback
-        self.line_index = ''
+        self.line_index = 'h1'
 
         def get_line(event):
             diffs = {}
@@ -190,8 +190,7 @@ class TkGui:
                 initx = abs(event.x - self.line_matrix[line][0])
                 diff = min(linex, initx)
                 diffs[line] = diff
-            print("hello", diffs)
-                
+                            
             # for line in self.line_set:
             #     x = abs(event.x - self.canvas.coords(self.line_set[line]['canv'])[0])
             #     y = abs(event.y - self.canvas.coords(self.line_set[line]['canv'])[1])
@@ -207,41 +206,57 @@ class TkGui:
             
             # if self.line_index >= line_set_length: # >= as 0-indexed
             #     self.line_index -= line_set_length
-            move_line(event)
+            move_line_mevent(event)
 
         self.min_gap = 10
-        
-        def move_line(event):
+
+        def move_line_mevent(event): # mouse event
+            x = event.x
+            y = event.y
+            move_line(x, y)
+            
+        def move_line(x, y): # TODO consolidate to one param 'i'
+            # if isinstance(input, Event):
+            #     x = event.x
+            #     y = event.y
+            # else:
+            #     x = event[0]
+            #     y = event[1]
+                
             ln = self.line_index
             line = self.line_set[ln]['canv']
             c = self.canvas.coords(line)
             # ci = self.canvas.coords(line_set_init[ln])
             # orient = ln % 2 == 0
-            # if orient and event.y >= ci[1]:
-            #     self.canvas.coords(line, c[0], event.y, c[2], event.y)
-            # elif not orient and event.x >= ci[0]:
-            #     self.canvas.coords(line, event.x, c[1], event.x, c[3])
-            # print(event.x, self.canvas.coords(line_set[3])[0])
+            # if orient and y >= ci[1]:
+            #     self.canvas.coords(line, c[0], y, c[2], y)
+            # elif not orient and x >= ci[0]:
+            #     self.canvas.coords(line, x, c[1], x, c[3])
+            # print(x, self.canvas.coords(line_set[3])[0])
 
-            # print(event.y, self.canvas.coords(self.line_set[ln]['canv']))
+            # print(y, self.canvas.coords(self.line_set[ln]['canv']))
 
             match ln:
-                case 'h1' if (event.y >= self.line_matrix[ln][1] and
-                              event.y < self.canvas.coords(self.line_set['h2']['canv'])[1]
+                case 'h1' if (y >= self.line_matrix[ln][1] and
+                              y < self.canvas.coords(self.line_set['h2']['canv'])[1]
                               - self.min_gap):
-                    self.canvas.coords(line, c[0], event.y, c[2], event.y)
-                case 'h2' if (event.y <= self.line_matrix[ln][1] and
-                              event.y > self.canvas.coords(self.line_set['h1']['canv'])[1]
+                    self.canvas.coords(line, c[0], y, c[2], y)
+                    self.line_set[ln]['txtvar'].set(y)
+                case 'h2' if (y <= self.line_matrix[ln][1] and
+                              y > self.canvas.coords(self.line_set['h1']['canv'])[1]
                               + self.min_gap):
-                    self.canvas.coords(line, c[0], event.y, c[2], event.y)
-                case 'v1' if (event.x >= self.line_matrix[ln][0] and
-                              event.x < self.canvas.coords(self.line_set['v2']['canv'])[0]
+                    self.canvas.coords(line, c[0], y, c[2], y)
+                    self.line_set[ln]['txtvar'].set(y)
+                case 'v1' if (x >= self.line_matrix[ln][0] and
+                              x < self.canvas.coords(self.line_set['v2']['canv'])[0]
                               - self.min_gap):
-                    self.canvas.coords(line, event.x, c[1], event.x, c[3])
-                case 'v2' if (event.x <= self.line_matrix[ln][0] and
-                              event.x > self.canvas.coords(self.line_set['v1']['canv'])[0]
+                    self.canvas.coords(line, x, c[1], x, c[3])
+                    self.line_set[ln]['txtvar'].set(x)
+                case 'v2' if (x <= self.line_matrix[ln][0] and
+                              x > self.canvas.coords(self.line_set['v1']['canv'])[0]
                               + self.min_gap):
-                    self.canvas.coords(line, event.x, c[1], event.x, c[3])
+                    self.canvas.coords(line, x, c[1], x, c[3])
+                    self.line_set[ln]['txtvar'].set(x)
 
         input_frame=ttk.Frame(ui_frame, width=30, height=10)
         print(self.line_set)
@@ -263,10 +278,11 @@ class TkGui:
 
         for line in list(self.line_set):
             hvset(line)
-            
+
+        h1var = self.line_set['h1']['txtvar']
         h1x_entry=ttk.Spinbox(input_frame, from_=0, to=100, increment=1,
-                             textvariable=self.line_set['h1']['txtvar'])
-                             # command=lambda x='h1': move_line(x))
+                              textvariable=h1var,
+                              command=lambda y=h1var: move_line(0, y.get())) # wrong type req int.
         h1x_entry.grid(row=0)
         x1 = StringVar(root, '0')
         x1_entry=ttk.Spinbox(input_frame, textvariable=x1)
@@ -306,7 +322,7 @@ class TkGui:
         # binds
 
         self.canvas.bind('<Button-1>', get_line)
-        self.canvas.bind('<B1-Motion>', move_line)
+        self.canvas.bind('<B1-Motion>', move_line_mevent)
 
     # scroll guillotine with bar
     def image_scale(self, root, img, factor):
