@@ -109,6 +109,14 @@ class TkGui:
 
             return im_frame, im_scrollh, im_scrollv, im_scrollbut, input_frame
 
+        # ! must call after init self.canvas
+        def canvas_a_size(a_size): # A-series paper size eg. A4
+            # TODO other standard print sizes eg. US
+            # not used once imaged resized
+            width, height = a_sizer(a_size)
+            self.canvas['width']=str(width + self.lt)+'m'
+            self.canvas['height']=str(height + self.lt)+'m'
+
         def init_canvas(lt):
             
             canvas=Canvas(im_frame,
@@ -122,14 +130,6 @@ class TkGui:
             # im_scrollv['command']=canvas.yview
             # print(self.im_canvas['highlightthickness'])
             canvas.grid(sticky=full)
-
-            def canvas_a_size(a_size): # A-series paper size eg. A4
-                # TODO other standard print sizes eg. US
-                # not used once imaged resized
-                width, height = a_sizer(a_size)
-                canvas['width']=str(width + lt)+'m'
-                canvas['height']=str(height + lt)+'m'
-            canvas_a_size(5)
 
             # anchor nw for guillotine metaphor (todo opt)
             pdf_item = canvas.create_image(lt, lt, anchor='nw')
@@ -327,6 +327,7 @@ class TkGui:
         im_frame, im_scrollh, im_scrollv, im_scrollbut, input_frame \
             = init_frames()
         self.canvas, self.pdf_item = init_canvas(self.lt)
+        canvas_a_size(5)
 
         self.images = {}
 
