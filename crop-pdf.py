@@ -6,8 +6,8 @@ from tkinter import Tk, StringVar
 
 from gui import TkGui
 
-root = Tk()
-gui = TkGui(root)
+# root = Tk()
+# gui = TkGui(root)
 
 # TkGui.
 
@@ -18,8 +18,8 @@ dir = os.getcwd()
 # i_file = os.path.join(dir, input(f"Input file: {dir}\\"))
 i_file = Path(dir, "houdini_foundations_19_5_01.pdf")
 
-gui.addLabel("Path: ")
-root.mainloop()
+# gui.addLabel("Path: ")
+# root.mainloop()
 
 o_file = i_file.with_stem(i_file.stem + "_cropped")
 print(o_file)
