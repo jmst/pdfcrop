@@ -206,7 +206,9 @@ class CanvasLines:
         #     case 'h': return tuple(x.get() if type(x) is DoubleVar else x for x in coords)
         #     case 'v': return tuple(x.get() if type(x) is DoubleVar else x for x in coords)
 
-    def unconv(self, i, conv, sample):
+    def unconv(self, i: int, conv: int, sample: int):
+        """Unconvert by inverse sample and 'conv' border compensation."""
+        # TODO make new line_matrix class the owner of this function
         noborder = i - conv # subtracts border
         og = noborder * sample
         return og
@@ -260,11 +262,15 @@ class CanvasLines:
         # # txtvar.trace_remove(mode, cbname)
         if not self.pref_pixel_ref:
             i = self.unconv(i, conv, self.sample)
-        self.line_matrix[self.line_index]['spinbox'].set(i)
+        # self.line_matrix[self.line_index]['spinbox'].set(i)
+        #       replace with trace mechanism
         
         # txtvar.trace_add(mode, cbname)
         
-    def move_line(self, i):
+    def move_line(self, i, line = None):
+        """line: self.line_index fixed at start of mouse drag event.
+                Spinbox passes its line value directly on each event."""
+        
         # if isinstance(input, Event):
         #     x = event.x
         #     y = event.y
@@ -272,7 +278,8 @@ class CanvasLines:
         #     x = event[0]
         #     y = event[1]
 
-        line = self.line_index
+        if not line:
+            line = self.line_index
         lm = self.line_matrix
 
         # ci = self.canvas.coords(line_set_init[ln])
@@ -307,7 +314,7 @@ class CanvasLines:
                 update(ln, i)
             case 'v1' if (i <= ln['ogpos'] and
                           i > lm['v0']['pos'].get() + self.min_gap):
-                update(ln, i)    
+                update(ln, i)
 
 class LineSpinBox:
     def __init__(self, line_matrix, master, sample, pref_pixel_ref, canvas_lines):
@@ -320,13 +327,14 @@ class LineSpinBox:
             # def init_spinbox(self, ln):
             lm = line_matrix[ln]
 
-
-            def try_get(txtvar, func):
+            def try_get(txtvar, func, i):
                 try:
-                    txtvar.set(func(txtvar.get(), ln))
+                    # txtvar.set(func(txtvar.get(), ln))
+                    txtvar.set(func(i, ln))
                 # empty field -> expected floating-point number but got ""
                 except TclError: # as e:
-                    return # print(e)
+                    # print(e)
+                    return
 
             # lm['txtvar/trace'] for removing trace later, unfinished
             if pref_pixel_ref:
@@ -338,8 +346,10 @@ class LineSpinBox:
             else:
                 inc = sample # self.img['sample']
                 limit = line_matrix[ln[0] + '1']['unconv'].get()
-                lm['txtvar'] = txtvar = lm['unconv'] # self.unconv(lm)
-                lm['trace'] = txtvar.trace_add("write", lambda *_: try_get(txtvar, self.move_spinbox_unconv))
+                txtvar = lm['unconv'] # self.unconv(lm) # lm['txtvar'] =
+                proxy = lm['pos']
+                # lm['trace'] = txtvar.trace_add("write", lambda *_: try_get(txtvar, self.move_spinbox_unconv))
+                lm['trace'] = proxy.trace_add("write", lambda *_: try_get(txtvar, self.move_spinbox_unconv, proxy.get()))
 
             return ttk.Spinbox(master, increment=inc, from_=0, to=limit,
                                textvariable=txtvar)
@@ -358,10 +368,9 @@ class LineSpinBox:
 
     # todo make these @classmethod?
     def move_spinbox_unconv(self, i, line):
-        # used in conv, bring back here for unconv # lm = self.line_matrix[line]
-        j = self.conv(i, line)
-        self.move_spinbox(j, line)
-        # i = self.unconv(i, lm)
+        # self.move_spinbox(j, line)
+        i = self.canvas_lines.unconv(i, self.line_matrix[line]['conv'],
+                                     self.sample)
         # lm['unconv'].set(i)
 
         # self.unconv(self.line_matrix[line])
@@ -380,9 +389,8 @@ class LineSpinBox:
         # working equivalent:
         #   ~\AppData\Local\Programs\Python\Python312\Lib\tkinter\__init__.py:2861
         #   return self.tk.getint(self.tk.call(
-        self.line_index = line # since move_line used elsewhere, todo make opt?
         #  self.line_matrix[line[0] + '0']['conv']
-        self.canvas_lines.move_line(i)
+        self.canvas_lines.move_line(i, line = line)
 
 if __name__ == "__main__":
     windll.shcore.SetProcessDpiAwareness(2)
