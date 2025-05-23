@@ -1,0 +1,49 @@
+from math import sqrt
+
+def a_sizer (a_size = 0):
+    """A-series metric paper size method.
+    Returns length and breadth of specified A<size>, in millimetres.
+    eg. A4, default argument 0 -> A0.
+    
+    Formula explanation:
+    Where 'a' is the longest side, a∕b=√2, A0=1m²=ab
+    1=a**2/sqrt(2), a=2**0.25
+    1=b**2*sqrt(2) or b=a*2**0.5, b=2**-0.25
+    let x = 2**0.5
+    A1a = A0b, so A1a=xA0b=2**-0.25, A2a = A1b, so A2a=xA1a=2**-0.75
+    so for each A-size increment, -0.5 from 2's power, start at 0.25
+      2**(0.25-(0.5*size)) (metres to millimetres = *1000)
+    portrait height>width, so a = height, w=h/sqrt(0.5)
+
+    Modify for landscape mode
+    """
+    length = 2 ** (0.25 - (0.5 * a_size)) * 1000
+    breadth = length / sqrt(2)
+    return breadth, length
+
+def int_scale(breadth, length):
+    """Truncate length, and take breadth closest to maintaining aspect ratio.
+        Not sure how necessary this really is."""
+    breadth = round(breadth)
+    length = int(length)
+    return breadth, length
+
+def closer_than(a, x, y): return abs(a - x) < abs(a - y)
+
+def two_scale(breadth, length, trunc = False):
+    """+/- to length to make it mulitple of 2, and the same for the breadth
+        of the same ratio to the new length.
+          I believe the 2 conversion will also be the closest to keep ratio,
+        either adding 1 or nothing, needing to subtract 2 would always be further off.
+    Optional 'trunc' truncates both dimensions at end of operation to maintain close ratio. Might get closer ratio if only needing to truncate 1 value.
+    """
+    if trunc:
+        def to_two(x): return x - (2 * (x % 2))
+    else:
+        def to_two(x): return x + (2 * (x % 2))
+    ratio = length/breadth
+    if type(length) != int:
+        int(length)
+    length = to_two(length)
+    breadth = round(to_two(length * ratio))
+    return breadth, length
