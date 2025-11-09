@@ -1,0 +1,131 @@
+https://manual.calibre-ebook.com/generated/en/ebook-convert.html
+calibre mentions CropBox horizontal with --pdf-odd-even-offset
+maybe --pdf-page-margin- can adjust the rest with negative
+
+precise 'A' paper scaling requires PIL
+
+hidden stats (scrollable) under pdf
+
+negative margin addon for firefox/system print dialog?
+
+simplified format output (see firefox print)
+other possible formatting changes
+
+metadata
+
+cli w/ pipe, or api to use other editor (gimp, krita, ps, ms paint)
+
+after restore, not sure which way round page/t-0.png
+
+* features
+undo/redo history
+
+* polish
+** line movement tearing/flicker
+? restrict draw speed
+? animate fading trail to mask + look cool
+** code
+always use 'line' for acutaly object and 'ln' for index eg. h1 (just naming? can't remember)
+** theme
+*** responsive to dark mode switch
+menu bar already is
+** mouse line select bias to vertical lines
+through testing I found often thinking I'd select vertical but would get the bottom horizontal
+matter of personal intuition so make bias opt (slider)
+brain thing for vertical preference or the longest side?
+indicate bias with thickness/colour?
+
+** rectangle mode
+#+begin_src python
+self.canvas.create_rectangle((2, 2,
+                              float(self.canvas['width'])+self.lt,
+                              float(self.canvas['height'])+self.lt),
+                             width=self.lt,
+                             outline='red')
+#+end_src
+
+* old
+# self.pdfcanvas.init_lines(self.lt)
+#+name init_lines
+#+begin_src python
+lineoffset = lt * 4 # lt*4 # don't know why lt*4 here
+x0 = lineo
+y0 = lineo
+
+x1 = pdf.width() + lineoffset - lineo - 1 # 1 for 0-index?
+y1 = pdf.height() + lineoffset - lineo - 1
+
+# float(self.canvas['height'])+debug_lt*4))
+
+# line point/position
+lp = {'h1': {'coord': y0},
+      'h2': {'coord': y1},
+      'v1': {'coord': x0},
+      'v2': {'coord': x1}}
+
+line_matrix_old = {'h1': [0, y0, xe, y0], 
+                   'h2': [0, y1, xe, y1], 
+                   'v1': [x0, 0, x0, ye], 
+                   'v2': [x1, 0, x1, ye]}
+
+# for ln in line_matrix:
+#     coords = line_matrix[ln]['coords']
+#     for i, xy in enumerate(coords):
+#         if type(xy) is DoubleVar:
+#             coords[i] = xy.get()
+#     print(line_matrix[ln]['coords'], line_matrix_old[ln], sep='\n')
+
+# self.line_xy = {}
+# for line in list(line_matrix):
+#     self.line_xy[line] = line_matrix[line][:2]
+#+end_src
+
+#+name line_set
+#+begin_src python
+def make_line_set(**kwargs):
+    set = {}
+    for ln in list(line_matrix):
+        line = self.canvas.create_line(line_matrix[ln]['coords'], **kwargs)
+        set[ln] = {'canv': line}
+        match ln[0]:
+            case 'h':
+                set[ln]['direction'] = 'y'
+            case 'v':
+                set[ln]['direction'] = 'x'
+    return set
+
+# _init to check if closest to og pos ie. canvas edge
+# TODO make this optional; og pos != canvas edge circumstance?
+# could show in debug mode # line_set_init = make_line_set(state='hidden')
+self.line_set = make_line_set(width=debug_lt, fill='red')
+
+line_set_length = len(self.line_set)
+line_set_length = len(line_matrix)
+
+global/instance so reusable for <B1-Motion> callback
+self.line_index = 'h0' # req. init value if spinbox used first, fix todo
+self.line_direction = 'x' # str, again req. ^^
+
+print(self.line_set)
+
+for line in list(self.line_set):
+    self.line_set[line]['txtvar'] = DoubleVar(root)
+
+print(self.line_set)
+initialises line_set txtvars
+def hvset(line):
+    match self.line_set[line]['direction']: # 0=x0, 1=y0
+        case 'y':
+            xy = 1
+        case 'x':
+            xy = 0
+        case _:
+            raise Exception("Line not in line_set")                
+        self.line_set[line]['txtvar'].set(
+            self.canvas.coords(line_matrix[line]['coords'])[xy])
+
+for line in list(self.line_set):
+    hvset(line)
+
+return line_matrix
+#+end_src

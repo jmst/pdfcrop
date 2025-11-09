@@ -1,0 +1,54 @@
+import start
+from tkinter import tk, ttk
+
+def frames():
+        # Top-level Frame
+        frame_main=ttk.Frame(root)
+        frame_main.grid(sticky='NSEW')
+        frame_main.columnconfigure(0, weight=1)
+        frame_main.columnconfigure(1, weight=0)
+        frame_main.rowconfigure(0, weight=0)
+        frame_main.rowconfigure(1, weight=1)
+
+        # North - Filename of input entry
+        frame_north=ttk.Frame(frame_main, borderwidth=1)
+        frame_north.grid(row=0, sticky="we", columnspan=2)
+        frame_north.columnconfigure(0, weight=0)
+        frame_north.columnconfigure(1, weight=1)
+        frame_north.rowconfigure(1, weight=0)
+
+        filename = "C:/Users/James/Desktop/projects/code/py/pdfcrop/houdini_foundations_19_5_01.pdf"
+        fn_label = ttk.Label(frame_north, text="File: ")
+        fn_label.grid(column=0, row=0)
+        self.txtvar = tk.StringVar(root)
+        self.txtvar.set("C:/Users/James/Desktop/projects/code/py/pdfcrop/houdini_foundations_19_5_01.pdf")
+        fn_entry = ttk.Entry(frame_north, textvariable = self.txtvar)
+        fn_entry.configure(state = tk.DISABLED)
+        fn_entry.grid(column=1, row=0, sticky="we")
+        fn_button = ttk.Button(frame_north, text = 'Open', width = 0)
+        fn_button.grid(column=2, row=0, sticky='e')
+
+        # West - Guideline value spinboxes and minimap
+        frame_west=ttk.Frame(frame_main, borderwidth=20, relief="ridge")
+        frame_west.grid(column=0, row=1, ipadx="5", sticky='NSEW')
+
+        frame_west.columnconfigure(0, weight=1)
+        frame_west.rowconfigure(0, weight=1)
+        frame_west.rowconfigure(1, weight=1)
+
+        input_frame=ttk.Frame(frame_west, width=30, height=10)
+        input_frame.grid(row=0, sticky='s')
+
+        crop_btn = ttk.Button(frame_west, text='Crop', command = self.crop_btn_event)
+        crop_btn.grid(row=1, sticky='n')
+
+        minimap=ttk.Frame(frame_west, height=100, style="debug-fg.TFrame")
+        minimap.grid(column=0, row=2, sticky='NSEW')
+
+        ## East - Image Canvas with mouse interactive guidelines
+        # todo can't set as self.frame_east? horseshit
+        frame_east=ttk.Frame(frame_main)
+        frame_east.grid(column=1, row=1, sticky='n')
+
+if __name__ == '__main__':
+    start.start(frames)
