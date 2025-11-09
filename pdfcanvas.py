@@ -9,6 +9,11 @@ import pymupdf
 
 import start
 
+# TODO
+# scale crop line with zoom
+# opt border around canvas edge
+
+
 class CanvasLines:
     pref_pixel_ref = False
     flipbit = {'0': '1', '1': '0'}
@@ -58,7 +63,7 @@ class CanvasLines:
                     ln['direction'] = 'x'
 
     def set_lines(self, width, height):
-        """ ogpos and pair's current position bound upper & lower respectively
+        """ ogpos and its pair bound upper & lower, including after convert
             instead of: lm['limit'] = [xy]e - self.lineo - 1
         """
         def init_pos(dim):
@@ -70,7 +75,7 @@ class CanvasLines:
                     # simpler as 3x self.lineo + 1 (line centre)?
                     lm['conv'] = self.lineo + self.lt
                     print(dim)
-                    val = dim - self.lineo - self.lt - 1 #- (self.lt % 2) # -1 because 0-indexed coords?
+                    val = dim - self.lineo - self.lt #- (self.lt % 2) # -1 because 0-indexed coords?
                 case _: # can things even get this far if line index is wrong?
                     val = -1
             p.set(val)
@@ -246,7 +251,7 @@ class PdfCanvas:
     
     bd = 17 # aligns with scrollbox bar+buttons, hc borders also align
     """Image subframe border between canvas and scrollbars."""
-    lt = 5
+    lt = 5 # TODO odd+cursor at center, prefer in/out? prefer edge cursor mode
     """Line thickness also decides internal canvas padding."""
     # lt, line thickness: line coords drawn from center of line width,
     # (0,0) cuts off left edge
@@ -259,24 +264,30 @@ class PdfCanvas:
     def __init__(self, root: tk.Tk, master: ttk.Frame):
         self.root = root # todo swap out root references for master if possible
         self.master = master
+
+        """grid"""
+        
         self.master.grid(sticky=tk.NSEW)#==.pack(fill=tk.BOTH, expand=True)#==
 
-        self.master.columnconfigure(0, weight=1)
-        self.master.columnconfigure(1, weight=0)
-        self.master.rowconfigure(0, weight=0)
-        self.master.rowconfigure(1, weight=1)
+        self.master.columnconfigure(0, weight=1) # scroll+canvas
+        self.master.columnconfigure(1, weight=0) # scroll
+        self.master.rowconfigure(0, weight=0) # scroll
+        self.master.rowconfigure(1, weight=1) # canvas
+
+        """scrollbars"""
 
         im_scrollh=ttk.Scrollbar(self.master, orient=tk.HORIZONTAL)
 
-        subframe_scrollbut=ttk.Frame(self.master)
+        subframe_scrollbut=ttk.Frame(self.master) # TODO dark border, may be button
         subframe_scrollbut.grid_propagate(False)
         subframe_scrollbut.columnconfigure(0, weight=1)
         subframe_scrollbut.rowconfigure(0, weight=1)
-        
         self.im_scrollbut=ttk.Button(subframe_scrollbut)#, state=tk.DISABLED)
 
         im_scrollv=ttk.Scrollbar(self.master, orient=tk.VERTICAL)
 
+        """image"""
+        
         # different border to background require subframe
         subframe_image=tk.Frame(self.master, relief=tk.SUNKEN, bd=self.bd)#, bg='red')
         subframe_image.columnconfigure(0, weight=1)
@@ -305,17 +316,24 @@ class PdfCanvas:
         self.a_size() #5 # empty size + acts as upper bound to image scale
         self.scale(root, None, 1)
 
-        subframe_scrollbut.grid(column=1, row=0, sticky=tk.NSEW) # else hidden
-        self.im_scrollbut.grid()
-        im_scrollv.grid(column=1, row=1, sticky=tk.NS)
-        subframe_image.grid(column=0, row=1, sticky=tk.NSEW)
-        self.canvas.grid(sticky=tk.NW) # sticky=tk.NSEW
+        """grid"""
+        
         im_scrollh.grid(column=0, row=0, sticky=tk.EW)
+        subframe_scrollbut.grid(column=1, row=0, sticky=tk.NSEW) # else hidden
+        self.im_scrollbut.grid()        
+        
+        subframe_image.grid(column=0, row=1, sticky=tk.NSEW)
+        self.canvas.grid(sticky=tk.NW) # NSEW
+
+        im_scrollv.grid(column=1, row=1, sticky=tk.NS)
+
 
         # ttk.Frame(master).grid(row=2)
 
-                # binds
+        """binds"""
+        
         self.img = None
+        # No image, no scale to reset
         def e_reset_scale(*_): self.scale(root, self.img, 0)
         # def e_reset_image(_): self.canvas.itemconfig(self.raster, image=self.img['og'])
         self.im_scrollbut['command'] = lambda: self.scale(root, self.img, 2)
